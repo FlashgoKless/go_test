@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -18,11 +19,11 @@ var userStore = map[string]*User{}
 var db *gorm.DB
 
 type User struct {
-    ID         uint   `gorm:"primaryKey"`
-    Email      string 
-    Password   string
-    TOTP       string // secret
-    Enabled2FA bool
+	ID         uint `gorm:"primaryKey"`
+	Email      string
+	Password   string
+	TOTP       string // secret
+	Enabled2FA bool
 }
 
 func main() {
@@ -122,43 +123,43 @@ func serveQRCode(c *gin.Context) {
 
 // POST /enable-2fa
 func enable2FA(c *gin.Context) {
-    var req struct {
-        Email string `json:"email"`
-        Code  string `json:"code"`
-    }
-    if err := c.BindJSON(&req); err != nil {
-        c.JSON(400, gin.H{"error": "bad request"})
-        return
-    }
+	var req struct {
+		Email string `json:"email"`
+		Code  string `json:"code"`
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "bad request"})
+		return
+	}
 
-    var user User
-    if err := db.First(&user, "email = ?", req.Email).Error; err != nil {
-        c.JSON(404, gin.H{"error": "user not found"})
-        return
-    }
+	var user User
+	if err := db.First(&user, "email = ?", req.Email).Error; err != nil {
+		c.JSON(404, gin.H{"error": "user not found"})
+		return
+	}
 
-    valid, err := totp.ValidateCustom(req.Code, user.TOTP, time.Now(), totp.ValidateOpts{
-        Period:    30,
-        Skew:      1,
-        Digits:    otp.DigitsSix,
-        Algorithm: otp.AlgorithmSHA1,
-    })
-    if err != nil {
-        c.JSON(500, gin.H{"error": "error validating code"})
-        return
-    }
-    if !valid {
-        c.JSON(401, gin.H{"error": "invalid code"})
-        return
-    }
+	valid, err := totp.ValidateCustom(req.Code, user.TOTP, time.Now(), totp.ValidateOpts{
+		Period:    30,
+		Skew:      1,
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA1,
+	})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "error validating code"})
+		return
+	}
+	if !valid {
+		c.JSON(401, gin.H{"error": "invalid code"})
+		return
+	}
 
-    user.Enabled2FA = true
-    if err := db.Save(&user).Error; err != nil {
-        c.JSON(500, gin.H{"error": "failed to update user"})
-        return
-    }
+	user.Enabled2FA = true
+	if err := db.Save(&user).Error; err != nil {
+		c.JSON(500, gin.H{"error": "failed to update user"})
+		return
+	}
 
-    c.JSON(200, gin.H{"message": "2FA enabled"})
+	c.JSON(200, gin.H{"message": "2FA enabled"})
 }
 
 func login(c *gin.Context) {
