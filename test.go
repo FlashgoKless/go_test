@@ -18,7 +18,7 @@ var userStore = map[string]*User{}
 var db *gorm.DB
 
 type User struct {
-    ID         uint   `gorm:"primaryKey"` // Add primary key
+    ID         uint   `gorm:"primaryKey"`
     Email      string 
     Password   string
     TOTP       string // secret
@@ -26,8 +26,6 @@ type User struct {
 }
 
 func main() {
-
-	// Connect to Postgres
 	dsn := "host=localhost user=postgres password=IQ777&exe777iq dbname=totp_demo port=5432 sslmode=disable"
 	var err error
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -35,14 +33,14 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Auto-migrate schema
+	//Auto-migrate schema
 	if err := db.AutoMigrate(&User{}); err != nil {
 		log.Fatal("Migration failed:", err)
 	}
 
 	r := gin.Default()
 
-	// Routes
+	//Routes
 	r.GET("/", homePage)
 	r.POST("/signup", signup)
 	r.GET("/qrcode/:email", serveQRCode)
@@ -59,7 +57,6 @@ func main() {
 		},
 	}
 
-	// Custom listener that can handle both HTTP and HTTPS
 	log.Fatal(server.ListenAndServeTLS("TLS_test.crt", "TLS_test_key_private.pem"))
 
 }
@@ -79,7 +76,6 @@ func signup(c *gin.Context) {
 		return
 	}
 
-	// Generate TOTP secret
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      "MyWebApp",
 		AccountName: req.Email,
@@ -115,19 +111,16 @@ func serveQRCode(c *gin.Context) {
 		return
 	}
 
-	// Construct otpauth URL manually
 	otpauthURL := fmt.Sprintf(
 		"otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=SHA1&digits=6&period=30",
 		"MyWebApp", email, user.TOTP, "MyWebApp",
 	)
 
-	// Encode into QR code PNG
 	png, _ := qrcode.Encode(otpauthURL, qrcode.Medium, 256)
 	c.Data(200, "image/png", png)
 }
 
-// POST /enable-2fa {email, code}
-// POST /enable-2fa {email, code}
+// POST /enable-2fa
 func enable2FA(c *gin.Context) {
     var req struct {
         Email string `json:"email"`
@@ -144,10 +137,9 @@ func enable2FA(c *gin.Context) {
         return
     }
 
-    // Validate with time skew tolerance
     valid, err := totp.ValidateCustom(req.Code, user.TOTP, time.Now(), totp.ValidateOpts{
         Period:    30,
-        Skew:      1, // allow ±30s drift
+        Skew:      1,
         Digits:    otp.DigitsSix,
         Algorithm: otp.AlgorithmSHA1,
     })
